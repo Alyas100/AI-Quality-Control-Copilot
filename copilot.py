@@ -15,6 +15,12 @@ never simply breaks.
 
 import json
 from typing import Optional, Tuple
+import os
+from dotenv import load_dotenv
+
+
+# Load environment variables from .env file
+load_dotenv()
 
 SYSTEM_PROMPT = """You are a senior Palm Oil Mill Operations Expert with 20+ years of experience in Crude Palm Oil (CPO) quality control and Free Fatty Acid (FFA) management.
 
@@ -82,35 +88,21 @@ def generate_fallback_recommendation(payload: dict) -> str:
     return f"**{risk.upper()} RISK**: Predicted FFA of {ffa:.2f}% is driven by {factor_text}. {action}"
 
 
-def _call_anthropic(payload: dict, api_key: str, model: str) -> str:
-    import anthropic
-
-    client = anthropic.Anthropic(api_key=api_key)
-    user_prompt = f"Batch analysis data:\n{json.dumps(payload, indent=2)}\n\nProvide the operational action plan."
-    response = client.messages.create(
-        model=model,
-        max_tokens=250,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
+def _call_gemini(payload: dict, api_key: str, model: str) -> str:
+    import google.generativeai as genai
+    
+    genai.configure(api_key=api_key)
+    
+    # Gemini handles system prompts during model initialization
+    generative_model = genai.GenerativeModel(
+        model_name=model,
+        system_instruction=SYSTEM_PROMPT
     )
-    text_blocks = [block.text for block in response.content if block.type == "text"]
-    return "".join(text_blocks).strip()
-
-
-def _call_openai(payload: dict, api_key: str, model: str) -> str:
-    from openai import OpenAI
-
-    client = OpenAI(api_key=api_key)
+    
     user_prompt = f"Batch analysis data:\n{json.dumps(payload, indent=2)}\n\nProvide the operational action plan."
-    response = client.chat.completions.create(
-        model=model,
-        max_tokens=250,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    return (response.choices[0].message.content or "").strip()
+    
+    response = generative_model.generate_content(user_prompt)
+    return response.text.strip()
 
 
 def generate_action_plan(
@@ -121,16 +113,17 @@ def generate_action_plan(
     Returns (message, used_live_llm). Falls back to a rule-based recommendation
     (used_live_llm=False) if no key is provided or the live call raises.
     """
+    # If the UI doesn't provide a key, try to pull it from the .env file
+    if not api_key:
+        api_key = os.getenv("GEMINI_API_KEY")
+
     if not api_key:
         return generate_fallback_recommendation(payload), False
 
     try:
-        if provider == "anthropic":
-            text = _call_anthropic(payload, api_key, model)
-        elif provider == "openai":
-            text = _call_openai(payload, api_key, model)
-        else:
-            raise ValueError(f"Unknown provider: {provider}")
+        provider == "gemini"
+        text = _call_gemini(payload, api_key, model)
+      
 
         if not text:
             raise ValueError("Empty response from LLM")

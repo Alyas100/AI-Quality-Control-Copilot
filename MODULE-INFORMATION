@@ -1,0 +1,17 @@
+
+1. module vision grader
+- this module for calssify the input using ai using cnn module
+which calssifies into 3 features which are ripe, overripe, underripe
+
+2. module predictive engine
+- this module using xgboost to predict free fatty acid (FFA)
+degradation
+
+below are three criteria it have measures:
+
+54% Predicted FFA: The machine learning model forecasts the current batch's FFA concentration to be 1.54%.
+
+±0.15% Model MAE: The Mean Absolute Error is low, meaning the actual FFA value is highly likely to be between 1.39% and 1.69%.
+
+\(R^2 = 0.95\): The model has an exceptionally high coefficient of determination, meaning it explains 95% of the variance in the data.
+

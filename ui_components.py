@@ -157,9 +157,16 @@ def build_ffa_gauge(predicted_ffa: float) -> go.Figure:
         },
     ))
     fig.update_layout(
-        height=250, margin=dict(l=25, r=25, t=35, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        font={"family": "IBM Plex Sans, sans-serif", "color": "#1e293b"},
+        height=220,               # Give the gauge explicit vertical breathing room
+        margin=dict(l=30, r=30, t=50, b=10),  # Add padding so the arch doesn't clip
+        
+        # This controls where the big text sits relative to the arch
+        annotations=[dict(
+            text=f"{predicted_ffa:.2f}%",
+            x=0.5, y=0.15,        # Lower the text position down away from the arc line
+            font=dict(size=28, color="#0F172A", weight="bold"),
+            showarrow=False
+        )]
     )
     return fig
 

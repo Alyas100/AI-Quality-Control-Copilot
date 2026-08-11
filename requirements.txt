@@ -7,3 +7,7 @@ plotly>=5.20
 Pillow>=10.2
 anthropic>=0.40
 openai>=1.50
+torch 
+torchvision
+google-generativeai 
+python-dotenv

@@ -17,12 +17,19 @@ from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 
 import generate_data
+import xgboost as xgb
 
-FEATURE_COLUMNS = ["harvest_delay_hours", "storage_temp_c", "humidity_percent", "ripeness_score"]
+FEATURE_COLUMNS = [
+    "ripeness_score",
+    "harvest_delay_hrs", 
+    "storage_temp_c", 
+    "humidity_pct"
+]
+
 FEATURE_LABELS = {
-    "harvest_delay_hours": "Harvest Delay (hrs)",
+    "harvest_delay_hrs": "Harvest Delay (hrs)",
     "storage_temp_c": "Storage Temp (°C)",
-    "humidity_percent": "Humidity (%)",
+    "humidity_pct": "Humidity (%)",
     "ripeness_score": "Ripeness Score",
 }
 TARGET_COLUMN = "ffa_percentage"
@@ -39,48 +46,22 @@ def ensure_dataset(csv_path: str = "synthetic_batch_data.csv") -> str:
     return csv_path
 
 
-@st.cache_resource(show_spinner="Training predictive engine on synthetic batch data...")
-def train_model(csv_path: str = "synthetic_batch_data.csv"):
-    """Train (once, cached) and return (model, metrics, feature_importances)."""
-    csv_path = ensure_dataset(csv_path)
-    df = pd.read_csv(csv_path)
 
-    X = df[FEATURE_COLUMNS]
-    y = df[TARGET_COLUMN]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+def predict_ffa(
+    model, harvest_delay_hours, storage_temp_c, humidity_percent, ripeness_score
+) -> float:
+  """Run real-time inference for a single batch scenario."""
+  X = pd.DataFrame([{
+      "harvest_delay_hrs": harvest_delay_hours,
+      "storage_temp_c": storage_temp_c,
+      "humidity_pct": humidity_percent,
+      "ripeness_score": ripeness_score,
+  }])[FEATURE_COLUMNS]
 
-    model = XGBRegressor(
-        n_estimators=150,
-        max_depth=4,
-        learning_rate=0.08,
-        subsample=0.9,
-        colsample_bytree=0.9,
-        random_state=42,
-        objective="reg:squarederror",
-    )
-    model.fit(X_train, y_train)
-
-    preds = model.predict(X_test)
-    metrics = {
-        "mae": float(mean_absolute_error(y_test, preds)),
-        "r2": float(r2_score(y_test, preds)),
-        "n_train": int(len(X_train)),
-        "n_test": int(len(X_test)),
-    }
-    importances = dict(zip(FEATURE_COLUMNS, (float(v) for v in model.feature_importances_)))
-    return model, metrics, importances
-
-
-def predict_ffa(model, harvest_delay_hours, storage_temp_c, humidity_percent, ripeness_score) -> float:
-    """Run real-time inference for a single batch scenario."""
-    X = pd.DataFrame([{
-        "harvest_delay_hours": harvest_delay_hours,
-        "storage_temp_c": storage_temp_c,
-        "humidity_percent": humidity_percent,
-        "ripeness_score": ripeness_score,
-    }])[FEATURE_COLUMNS]
-    pred = float(model.predict(X)[0])
-    return max(0.0, pred)
+  # Wrap DataFrame into a DMatrix object
+  dmatrix_data = xgb.DMatrix(X)
+  pred = float(model.predict(dmatrix_data)[0])
+  return max(0.0, pred)
 
 
 def get_risk_level(ffa_percentage: float) -> dict:
@@ -100,3 +81,37 @@ def get_risk_level(ffa_percentage: float) -> dict:
             "level": "Critical", "color": "red", "icon": "🚨",
             "message": "FFA threshold exceeded. Immediate action required.",
         }
+
+
+def predict_moisture(
+    model, harvest_delay_hours, storage_temp_c, humidity_percent, ripeness_score
+) -> float:
+    """Run real-time inference for Moisture Content."""
+    X = pd.DataFrame([{
+        "ripeness_score": ripeness_score,
+        "harvest_delay_hrs": harvest_delay_hours,
+        "storage_temp_c": storage_temp_c,
+        "humidity_pct": humidity_percent,
+    }])[FEATURE_COLUMNS]
+
+    # Wrap DataFrame into a DMatrix object
+    dmatrix_data = xgb.DMatrix(X)
+    pred = float(model.predict(dmatrix_data)[0])
+    return max(0.0, pred)  # Moisture can't be negative
+
+
+def predict_purity(
+    model, harvest_delay_hours, storage_temp_c, humidity_percent, ripeness_score
+) -> float:
+    """Run real-time inference for Purity (DOBI Index)."""
+    X = pd.DataFrame([{
+        "ripeness_score": ripeness_score,
+        "harvest_delay_hrs": harvest_delay_hours,
+        "storage_temp_c": storage_temp_c,
+        "humidity_pct": humidity_percent,
+    }])[FEATURE_COLUMNS]
+
+    # Wrap DataFrame into a DMatrix object
+    dmatrix_data = xgb.DMatrix(X)
+    pred = float(model.predict(dmatrix_data)[0])
+    return max(0.0, pred)  # Purity score shouldn't be negative

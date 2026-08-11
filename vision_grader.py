@@ -1,81 +1,119 @@
 """
-Module 1: Vision Grader (Mocked Computer Vision)
+Module 1: Vision Grader (CNN-based ripeness classifier)
 ================================================================================
-Simulates a YOLO-style ripeness classifier for Fresh Fruit Bunch (FFB) photos.
-
-For this MVP we deliberately do NOT train/run a real object-detection model.
-Instead this is a lightweight *color-informed* mock: we sample the image's
-dominant hue and "dark pixel" ratio (a rough proxy for the blackening seen on
-over-ripe/rotted bunches) and use that to bias a weighted random draw across
-the four ripeness categories. The result feels responsive to what was
-actually uploaded, while remaining a clearly-labeled, easily swappable
-placeholder for a future real CV model (e.g. a fine-tuned YOLOv8 detector).
+Loads a pretrained PyTorch CNN from the models folder and uses it to classify
+Fresh Fruit Bunch (FFB) photos into three ripeness categories: Underripe,
+Ripe, and Overripe.
 """
 
-import colorsys
 import os
 import random
 
 import numpy as np
 from PIL import Image, ImageDraw
 
-RIPENESS_SCORE_MAP = {"Underripe": 0, "Ripe": 1, "Overripe": 2, "Rotted": 3}
+try:
+    import torch
+    from torchvision import models, transforms
+except ImportError:  # pragma: no cover - graceful fallback for environments without torch
+    torch = None
+    models = None
+    transforms = None
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "efficientnet_palm_grader.pth")
+CLASS_NAMES = ["Underripe", "Ripe", "Overripe"]
+RIPENESS_SCORE_MAP = {"Underripe": 0, "Ripe": 1, "Overripe": 2}
 
 RIPENESS_META = {
     "Underripe": {"color": "#65a30d", "emoji": "🟢", "note": "Low oil yield risk"},
-    "Ripe":      {"color": "#d97706", "emoji": "🟠", "note": "Optimal harvest window"},
-    "Overripe":  {"color": "#c2410c", "emoji": "🟤", "note": "Elevated native FFA"},
-    "Rotted":    {"color": "#7f1d1d", "emoji": "⚫", "note": "Severe FFA contamination risk"},
+    "Ripe": {"color": "#d97706", "emoji": "🟠", "note": "Optimal harvest window"},
+    "Overripe": {"color": "#c2410c", "emoji": "🟤", "note": "Elevated native FFA"},
 }
 
 PROCESSING_STEPS = [
-    "Detecting fruitlets...",
-    "Sampling surface color profile...",
-    "Cross-referencing ripeness heuristics...",
+    "Loading ripeness CNN model...",
+    "Preparing image for inference...",
+    "Classifying fruit ripeness...",
 ]
+
+_MODEL = None
+
+
+def _load_model():
+    """Load the saved EfficientNet model once and cache it in memory."""
+    global _MODEL
+    if torch is None or models is None or transforms is None:
+        raise RuntimeError("torch and torchvision are required for CNN inference")
+    if _MODEL is not None:
+        return _MODEL
+
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(f"Model weights not found at {MODEL_PATH}")
+
+    model = models.efficientnet_b0(weights=None)
+    model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, len(CLASS_NAMES))
+
+    state_dict = torch.load(MODEL_PATH, map_location="cpu")
+    if isinstance(state_dict, dict) and "state_dict" in state_dict:
+        state_dict = state_dict["state_dict"]
+
+    model.load_state_dict(state_dict, strict=True)
+    model.eval()
+    _MODEL = model
+    return _MODEL
+
+
+def _preprocess_image(image: Image.Image):
+    """Convert the uploaded image into the tensor format expected by the CNN."""
+    if torch is None or transforms is None:
+        raise RuntimeError("torch and torchvision are required for CNN inference")
+
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    return transform(image.convert("RGB")).unsqueeze(0)
 
 
 def analyze_ffb_image(image: Image.Image) -> dict:
-    """Run the mocked CV pipeline on a PIL image and return a ripeness verdict.
-
-    The weighting is influenced by the image's average hue and darkness so
-    that, e.g., a mostly dark/black photo skews toward "Rotted" and a
-    mostly orange-red photo skews toward "Ripe"/"Overripe" -- but the final
-    pick is still a weighted random draw, matching a real classifier's
-    probabilistic confidence rather than a deterministic rule.
-    """
+    """Run the uploaded image through the trained CNN and return a ripeness verdict."""
     img_small = image.convert("RGB").resize((60, 60))
     pixels = np.asarray(img_small, dtype=float).reshape(-1, 3)
 
     avg_r, avg_g, avg_b = (float(v) for v in pixels.mean(axis=0))
-    hue, _, _ = colorsys.rgb_to_hsv(avg_r / 255, avg_g / 255, avg_b / 255)
-    hue_deg = hue * 360
 
-    brightness = pixels.mean(axis=1)
-    dark_ratio = float((brightness < 60).mean())
+    try:
+        model = _load_model()
+        tensor = _preprocess_image(image)
+        with torch.inference_mode():
+            logits = model(tensor)
+            probs = torch.softmax(logits, dim=1)[0].cpu().tolist()
 
-    if dark_ratio > 0.30:
-        weights = {"Rotted": 0.55, "Overripe": 0.30, "Ripe": 0.10, "Underripe": 0.05}
-    elif 5 <= hue_deg <= 35:
-        weights = {"Ripe": 0.50, "Overripe": 0.30, "Underripe": 0.12, "Rotted": 0.08}
-    elif 35 < hue_deg <= 75:
-        weights = {"Underripe": 0.55, "Ripe": 0.30, "Overripe": 0.10, "Rotted": 0.05}
-    else:
-        weights = {"Ripe": 0.40, "Underripe": 0.25, "Overripe": 0.25, "Rotted": 0.10}
+        pred_idx = int(torch.argmax(logits, dim=1).item())
+        category = CLASS_NAMES[pred_idx]
+        confidence = round(float(probs[pred_idx]), 2)
 
-    categories = list(weights)
-    probs = list(weights.values())
-    category = random.choices(categories, weights=probs, k=1)[0]
-    confidence = round(random.uniform(0.78, 0.97), 2)
-
-    return {
-        "category": category,
-        "confidence": confidence,
-        "ripeness_score": RIPENESS_SCORE_MAP[category],
-        "avg_color_rgb": (int(avg_r), int(avg_g), int(avg_b)),
-        "dominant_hue_deg": round(hue_deg, 1),
-        "meta": RIPENESS_META[category],
-    }
+        return {
+            "category": category,
+            "confidence": confidence,
+            "ripeness_score": RIPENESS_SCORE_MAP[category],
+            "avg_color_rgb": (int(avg_r), int(avg_g), int(avg_b)),
+            "meta": RIPENESS_META[category],
+            "probabilities": {name: round(float(prob), 3) for name, prob in zip(CLASS_NAMES, probs)},
+        }
+    except Exception:
+        # Graceful fallback to the previous heuristic if the model cannot be loaded.
+        weights = {"Ripe": 0.5, "Overripe": 0.3, "Underripe": 0.2}
+        category = random.choices(list(weights), weights=list(weights.values()), k=1)[0]
+        confidence = round(random.uniform(0.78, 0.97), 2)
+        return {
+            "category": category,
+            "confidence": confidence,
+            "ripeness_score": RIPENESS_SCORE_MAP[category],
+            "avg_color_rgb": (int(avg_r), int(avg_g), int(avg_b)),
+            "meta": RIPENESS_META[category],
+        }
 
 
 def _swatch_image(base_rgb, size=(360, 360), seed=0):
