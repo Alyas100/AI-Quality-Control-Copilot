@@ -1,2 +1,6 @@
 -removed 'rotten' category for cnn because i forgot to train cnn (DONE)
 -using rotten image of palm fruit, so later will update this (DONE)
+
+-model overfit on cnn, need to train, below are the details what need to be done:
+
+The solution is to apply data augmentation to your existing images and use transfer learning with a pre-trained model.Example why:Data augmentation artificially expands your dataset by flipping, rotating, and changing the brightness of your images, forcing the model to learn the fruit's actual features regardless of lighting or angle. Transfer learning uses an existing model (like ResNet or MobileNet) that already knows how to recognize basic shapes and edges from millions of other images, so your small dataset only needs to teach it the specific color differences of palm fruit ripeness
