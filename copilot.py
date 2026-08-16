@@ -57,35 +57,6 @@ def build_payload(vision_result: dict, env_conditions: dict, predicted_ffa: floa
     }
 
 
-def generate_fallback_recommendation(payload: dict) -> str:
-    """Deterministic, rule-based stand-in for the LLM. Used when no API key is
-    set or the live call fails, so the copilot always returns *something*."""
-    ffa = payload["predictive_analysis"]["predicted_ffa_percentage"]
-    risk = payload["predictive_analysis"]["risk_level"]
-    ripeness = payload["vision_analysis"]["ripeness_category"]
-    delay = payload["environmental_conditions"]["harvest_delay_hours"]
-    temp = payload["environmental_conditions"]["storage_temp_c"]
-    humidity = payload["environmental_conditions"]["humidity_percent"]
-
-    factors = []
-    if delay > 24:
-        factors.append(f"a {delay:.0f}-hour harvest delay")
-    if temp > 35:
-        factors.append(f"elevated storage temperature ({temp:.0f}°C)")
-    if humidity > 85:
-        factors.append(f"high humidity ({humidity:.0f}%)")
-    if ripeness in ("Overripe", "Rotted"):
-        factors.append(f"{ripeness.lower()} fruit condition")
-    factor_text = ", ".join(factors) if factors else "generally acceptable handling conditions"
-
-    if risk == "Critical":
-        action = "Fast-track this batch to the sterilizer within 2 hours and flag it for priority processing to limit further FFA rise."
-    elif risk == "Warning":
-        action = "Schedule processing within the next 6-8 hours and monitor storage conditions closely to prevent escalation."
-    else:
-        action = "Standard processing schedule is acceptable; continue routine monitoring."
-
-    return f"**{risk.upper()} RISK**: Predicted FFA of {ffa:.2f}% is driven by {factor_text}. {action}"
 
 
 def _call_gemini(payload: dict, api_key: str, model: str) -> str:
@@ -117,8 +88,6 @@ def generate_action_plan(
     if not api_key:
         api_key = os.getenv("GEMINI_API_KEY")
 
-    if not api_key:
-        return generate_fallback_recommendation(payload), False
 
     try:
         provider == "gemini"
@@ -130,5 +99,4 @@ def generate_action_plan(
         return text, True
 
     except Exception as e:
-        fallback = generate_fallback_recommendation(payload)
-        return fallback + FALLBACK_NOTE.format(error=str(e)[:140]), False
+        return f"Live LLM failed: {str(e)}", False

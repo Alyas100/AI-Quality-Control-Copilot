@@ -78,13 +78,13 @@ with st.sidebar:
     st.divider()
     st.markdown("**AI Copilot Settings**")
     provider_label = st.radio("LLM provider", ["Anthropic Claude", "OpenAI GPT"], horizontal=False)
-    provider = "anthropic" if provider_label == "Anthropic Claude" else "openai"
+    provider = "gemini"
     api_key = st.text_input(
         f"{provider_label} API key",
         type="password",
         placeholder="Leave blank to use the offline fallback",
     )
-    default_model = "claude-sonnet-5" if provider == "anthropic" else "gpt-5.4-mini"
+    default_model = "gemini-2.5-flash" 
     with st.expander("Advanced: model name"):
         model_name = st.text_input("Model ID", value=default_model)
         st.caption("Editable in case provider model names have moved on since this was built.")
