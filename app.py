@@ -75,30 +75,7 @@ with st.sidebar:
     storage_temp_c = st.slider("Storage temperature (°C)", 25.0, 45.0, 30.0, 0.5)
     humidity_percent = st.slider("Ambient humidity (%)", 60, 100, 75)
 
-    st.divider()
-    st.markdown("**AI Copilot Settings**")
-    provider_label = st.radio("LLM provider", ["Anthropic Claude", "OpenAI GPT"], horizontal=False)
-    provider = "gemini"
-    api_key = st.text_input(
-        f"{provider_label} API key",
-        type="password",
-        placeholder="Leave blank to use the offline fallback",
-    )
-    default_model = "gemini-2.5-flash" 
-    with st.expander("Advanced: model name"):
-        model_name = st.text_input("Model ID", value=default_model)
-        st.caption("Editable in case provider model names have moved on since this was built.")
-
-    st.divider()
-    with st.expander("ℹ️ About this MVP"):
-        st.caption(
-            "Built for the JPG Hackathon 2026: AI for Oil Quality Challenge. "
-            "Module 1 (vision) is a lightweight color-informed mock standing in "
-            "for a future YOLO-based ripeness detector. Module 2 is a real "
-            "XGBoost model trained on a domain-formula synthetic dataset. "
-            "Module 3 calls a live LLM with an offline rule-based fallback "
-            "for demo resilience."
-        )
+    
 
 # ============================================================== module 2: train (cached) + live predict
 
@@ -140,9 +117,9 @@ with s4:
 st.write("")
 
 tab1, tab2, tab3 = st.tabs([
-    "📸  Module 1 · Vision Grader",
-    "📊  Module 2 · Predictive Engine",
-    "🤖  Module 3 · AI Copilot",
+    "Visual Inspection",
+    "Predictive Analytics",
+    "AI Advisory",
 ])
 
 # ================================================================= TAB 1
