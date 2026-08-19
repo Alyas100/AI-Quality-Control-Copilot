@@ -14,6 +14,7 @@ Run with:
 
 import hashlib
 import io
+import os
 import time
 
 import streamlit as st
@@ -21,6 +22,7 @@ from PIL import Image
 
 import copilot
 import ml_engine as ml
+import report_builder
 import ui_components as ui
 import vision_grader as vg
 import xgboost as xgb
@@ -74,6 +76,10 @@ with st.sidebar:
     harvest_delay_hours = st.slider("Harvest delay (hours)", 0, 72, 18, help="Time between cutting and mill intake.")
     storage_temp_c = st.slider("Storage temperature (°C)", 25.0, 45.0, 30.0, 0.5)
     humidity_percent = st.slider("Ambient humidity (%)", 60, 100, 75)
+
+    provider = "gemini"
+    api_key = st.text_input("Gemini API Key", type="password", value=os.getenv("GEMINI_API_KEY", ""))
+    model_name = "gemini-2.5-flash"
 
     
 
@@ -292,6 +298,24 @@ with tab3:
         st.markdown(ui.chat_bubble("ai", formatted, already_formatted=True), unsafe_allow_html=True)
         if not st.session_state.llm_used_live:
             st.caption("⚠️ Showing the offline rule-based fallback. Add a valid API key in the sidebar for live LLM reasoning.")
+
+        action_plan_dict = {
+            "risk_classification": risk["level"],
+            "narrative": st.session_state.llm_response,
+            "sms_alert": {"send": False},
+            "schedule_change": {"recommended": False, "action": "No change needed"},
+        }
+        pdf_bytes = report_builder.generate_pdf_report(
+            st.session_state.last_payload,
+            action_plan_dict,
+            st.session_state.llm_used_live,
+        )
+        st.download_button(
+            label="📥 Download PDF Report",
+            data=pdf_bytes,
+            file_name="ffa_copilot_report.pdf",
+            mime="application/pdf",
+        )
     else:
         st.info("Click **Generate Action Plan** to run the Copilot on the current batch data.")
 

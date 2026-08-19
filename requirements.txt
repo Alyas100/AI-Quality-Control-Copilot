@@ -11,3 +11,4 @@ torch
 torchvision
 google-generativeai 
 python-dotenv
+reportlab>=4.0
