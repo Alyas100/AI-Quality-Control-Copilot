@@ -84,6 +84,22 @@ html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
 
 [data-testid="stSidebar"] { background:var(--slate-50); }
 div.block-container { padding-top:1.6rem; }
+
+.qc-finance { background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius:14px; padding:1rem 1.2rem; color:white; }
+.qc-finance .qc-finance-label { font-size:.7rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; }
+.qc-finance .qc-finance-value { font-family:'Sora',sans-serif; font-size:1.4rem; font-weight:700; color:white; margin-top:.15rem; }
+.qc-finance .qc-finance-sub { font-size:.75rem; color:#cbd5e1; margin-top:.25rem; }
+
+.qc-grade { border-radius:14px; padding:.85rem 1.1rem; display:flex; gap:.7rem; align-items:center; border-left:5px solid; }
+.qc-grade.premium { background:var(--emerald-50); border-color:var(--emerald-500); }
+.qc-grade.standard { background:var(--slate-100); border-color:var(--slate-400); }
+.qc-grade.discount { background:var(--red-50); border-color:var(--red-500); }
+.qc-grade .qc-grade-icon { font-size:1.3rem; }
+.qc-grade .qc-grade-title { font-family:'Sora',sans-serif; font-weight:700; font-size:.9rem; }
+.qc-grade.premium .qc-grade-title { color:#065f46; }
+.qc-grade.standard .qc-grade-title { color:#475569; }
+.qc-grade.discount .qc-grade-title { color:#991b1b; }
+.qc-grade .qc-grade-body { font-size:.8rem; color:var(--slate-600); margin-top:.15rem; }
 </style>
 """
 
@@ -133,6 +149,47 @@ def chat_bubble(role: str, content: str, already_formatted: bool = False) -> str
     return f"""<div class="qc-chat-msg {cls}">
       <div class="qc-chat-role">{role_label}</div>
       <div>{body}</div>
+    </div>"""
+
+
+# ------------------------------------------------------------------ Financial Impact components
+
+def financial_summary_card(bi: dict) -> str:
+    color_map = {"green": "#10b981", "amber": "#f59e0b", "red": "#ef4444"}
+    accent = color_map.get(bi["risk_impact_color"], "#94a3b8")
+    return f"""<div class="qc-finance" style="border-left:4px solid {accent};">
+      <div class="qc-finance-label">💰 Revenue Impact</div>
+      <div class="qc-finance-value">${bi['penalty_total']:,.0f} lost</div>
+      <div class="qc-finance-sub">${bi['penalty_per_ton']:,.1f}/ton penalty · {bi['batch_size']}t batch</div>
+    </div>"""
+
+
+def grade_card(grade: dict, ffa_pct: float) -> str:
+    icon_map = {"premium": "⭐", "standard": "✓", "discount": "⚠️"}
+    icon = icon_map.get(grade["key"], "✓")
+    return f"""<div class="qc-grade {grade['key']}">
+      <div class="qc-grade-icon">{icon}</div>
+      <div>
+        <div class="qc-grade-title">{html.escape(grade['label'])}</div>
+        <div class="qc-grade-body">FFA {ffa_pct:.2f}% — {grade['multiplier']:.0%} price multiplier applied</div>
+      </div>
+    </div>"""
+
+
+def annual_projection_card(annual: dict) -> str:
+    color = "red" if annual["annual_penalty"] > 10000 else "amber" if annual["annual_penalty"] > 0 else "green"
+    color_map = {"green": "#10b981", "amber": "#f59e0b", "red": "#ef4444"}
+    accent = color_map[color]
+    return f"""<div class="qc-banner {color}" style="margin-top:.5rem;">
+      <div class="qc-banner-icon">📊</div>
+      <div>
+        <div class="qc-banner-title">Annual Projection</div>
+        <div class="qc-banner-body">
+          At {annual['daily_batches']} batches/day × {annual['working_days']} days: 
+          <strong>${annual['annual_penalty']:,.0f}</strong> annual revenue at risk 
+          ({annual['annual_loss_pct']:.1f}% of ${annual['annual_revenue']:,.0f} gross)
+        </div>
+      </div>
     </div>"""
 
 
@@ -188,5 +245,30 @@ def build_importance_chart(importances: dict) -> go.Figure:
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(showgrid=False, visible=False, range=[0, max(values) * 1.25]),
         font={"family": "IBM Plex Sans, sans-serif", "color": "#1e293b", "size": 12},
+    )
+    return fig
+
+
+def build_revenue_breakdown_chart(bi: dict) -> go.Figure:
+    categories = ["Base Revenue", "FFA Penalty", "Net Revenue"]
+    values = [bi["base_revenue"], -bi["penalty_total"], bi["net_revenue"]]
+    colors = ["#1e293b", "#ef4444", "#10b981"]
+
+    fig = go.Figure(go.Bar(
+        x=categories, y=values,
+        marker_color=colors,
+        text=[f"${abs(v):,.0f}" for v in values],
+        textposition="outside",
+        textfont=dict(family="Sora, sans-serif", size=13, color="#1e293b"),
+    ))
+    fig.update_layout(
+        height=260,
+        margin=dict(l=10, r=10, t=30, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis=dict(showgrid=True, gridcolor="#e2e8f0", tickprefix="$", tickformat=","),
+        xaxis=dict(showgrid=False),
+        font={"family": "IBM Plex Sans, sans-serif", "color": "#1e293b", "size": 12},
+        title=dict(text="Revenue Breakdown per Batch", font=dict(size=14, family="Sora, sans-serif")),
     )
     return fig

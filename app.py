@@ -21,6 +21,7 @@ import streamlit as st
 from PIL import Image
 
 import copilot
+import financial_calculator as fin
 import ml_engine as ml
 import report_builder
 import ui_components as ui
@@ -77,9 +78,17 @@ with st.sidebar:
     storage_temp_c = st.slider("Storage temperature (°C)", 25.0, 45.0, 30.0, 0.5)
     humidity_percent = st.slider("Ambient humidity (%)", 60, 100, 75)
 
+    st.markdown("---")
+    st.markdown("**💰 Financial Parameters**")
+    batch_size = st.slider("Batch size (tons)", 5, 50, 20, help="Tonnage per processing batch for revenue calculations.")
+
     provider = "gemini"
-    api_key = st.text_input("Gemini API Key", type="password", value=os.getenv("GEMINI_API_KEY", ""))
+    api_key = os.getenv("GEMINI_API_KEY", "")
     model_name = "gemini-2.5-flash"
+
+    st.markdown("---")
+    st.markdown("**💵 Live Financial Impact**")
+    financial_placeholder = st.sidebar.empty()
 
     
 
@@ -98,6 +107,13 @@ predicted_moisture = ml.predict_moisture(moisture_model, harvest_delay_hours, st
 
 # third xgboost model
 predicted_purity = ml.predict_purity(purity_model, harvest_delay_hours, storage_temp_c, humidity_percent, ripeness_score)
+
+# financial impact calculator
+batch_impact = fin.calculate_batch_impact(predicted_ffa, batch_size)
+annual_impact = fin.calculate_annual_estimate(batch_impact)
+
+# fill the sidebar financial summary now that batch_impact is ready
+financial_placeholder.markdown(ui.financial_summary_card(batch_impact), unsafe_allow_html=True)
 
 
 # ============================================================== header
@@ -118,7 +134,7 @@ with s2:
 with s3:
     st.markdown(ui.metric_card(risk["icon"], "Risk Level", risk["level"], "Safe <2.5% · Warning 2.5-3.5% · Critical >3.5%"), unsafe_allow_html=True)
 with s4:
-    st.markdown(ui.metric_card("📈", "Model Fit", f"R² {metrics['R2']:.2f}", f"MAE ±{metrics['mae']:.2f}%"), unsafe_allow_html=True)
+    st.markdown(ui.metric_card("💰", "Revenue Impact", f"${batch_impact['penalty_total']:,.0f}", f"per {batch_size}t batch", accent=batch_impact["risk_impact_color"]), unsafe_allow_html=True)
 
 st.write("")
 
@@ -259,6 +275,25 @@ with tab2:
             ), 
             unsafe_allow_html=True
         )
+
+    # -------------------------------------------------- FINANCIAL IMPACT ANALYSIS
+    st.write("")
+    st.markdown("##### 💰 Financial Impact Analysis")
+    st.caption("Estimated revenue loss from predicted FFA degradation, tied directly to bottom-line profitability.")
+
+    fin_col1, fin_col2 = st.columns([1.2, 1.8])
+    with fin_col1:
+        st.markdown(ui.grade_card(batch_impact["grade"], predicted_ffa), unsafe_allow_html=True)
+        st.write("")
+        fm1, fm2 = st.columns(2)
+        with fm1:
+            st.markdown(ui.metric_card("💵", "Base Revenue", f"${batch_impact['base_revenue']:,.0f}", f"{batch_size}t × ${batch_impact['cpo_price']}/t"), unsafe_allow_html=True)
+        with fm2:
+            st.markdown(ui.metric_card("📉", "FFA Penalty", f"−${batch_impact['penalty_total']:,.0f}", f"${batch_impact['penalty_per_ton']:,.1f}/ton"), unsafe_allow_html=True)
+    with fin_col2:
+        st.plotly_chart(ui.build_revenue_breakdown_chart(batch_impact), use_container_width=True, config={"displayModeBar": False})
+
+    st.markdown(ui.annual_projection_card(annual_impact), unsafe_allow_html=True)
 
     # -------------------------------------------------- BOTTOM PANEL: DATA VECTOR
     st.write("")
