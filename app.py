@@ -119,7 +119,6 @@ financial_placeholder.markdown(ui.financial_summary_card(batch_impact), unsafe_a
 # ============================================================== header
 st.markdown(f"""
 <div class="qc-hero">
-  <div class="qc-badge">JPG HACKATHON 2026 · AI FOR OIL QUALITY CHALLENGE</div>
   <h1>🌴 AI Quality Control Copilot</h1>
   <p>Predicting CPO Free Fatty Acid degradation from vision + sensor data, and turning it into an operational action plan in real time.</p>
 </div>
