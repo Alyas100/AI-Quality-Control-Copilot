@@ -171,7 +171,7 @@ def grade_card(grade: dict, ffa_pct: float) -> str:
       <div class="qc-grade-icon">{icon}</div>
       <div>
         <div class="qc-grade-title">{html.escape(grade['label'])}</div>
-        <div class="qc-grade-body">FFA {ffa_pct:.2f}% — {grade['multiplier']:.0%} price multiplier applied</div>
+        <div class="qc-grade-body">Oil freshness (FFA): {ffa_pct:.2f}% — {grade['multiplier']:.0%} of the base price applied</div>
       </div>
     </div>"""
 
@@ -214,16 +214,8 @@ def build_ffa_gauge(predicted_ffa: float) -> go.Figure:
         },
     ))
     fig.update_layout(
-        height=220,               # Give the gauge explicit vertical breathing room
-        margin=dict(l=30, r=30, t=50, b=10),  # Add padding so the arch doesn't clip
-        
-        # This controls where the big text sits relative to the arch
-        annotations=[dict(
-            text=f"{predicted_ffa:.2f}%",
-            x=0.5, y=0.15,        # Lower the text position down away from the arc line
-            font=dict(size=28, color="#0F172A", weight="bold"),
-            showarrow=False
-        )]
+        height=220,
+        margin=dict(l=30, r=30, t=50, b=10),
     )
     return fig
 
@@ -250,7 +242,7 @@ def build_importance_chart(importances: dict) -> go.Figure:
 
 
 def build_revenue_breakdown_chart(bi: dict) -> go.Figure:
-    categories = ["Base Revenue", "FFA Penalty", "Net Revenue"]
+    categories = ["Base Revenue", "Quality Price Reduction", "Net Revenue"]
     values = [bi["base_revenue"], -bi["penalty_total"], bi["net_revenue"]]
     colors = ["#1e293b", "#ef4444", "#10b981"]
 

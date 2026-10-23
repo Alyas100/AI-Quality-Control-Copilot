@@ -70,7 +70,7 @@ for key, default in {
 
 # ============================================================== sidebar
 with st.sidebar:
-    st.markdown("###Mill Control Panel")
+    st.markdown("Mill Control Panel")
     st.caption("Adjust intake & storage conditions to simulate live batch scenarios.")
 
     st.markdown("**Environmental Conditions**")
@@ -120,7 +120,7 @@ financial_placeholder.markdown(ui.financial_summary_card(batch_impact), unsafe_a
 st.markdown(f"""
 <div class="qc-hero">
   <h1>🌴 AI Quality Control Copilot</h1>
-  <p>Predicting CPO Free Fatty Acid degradation from vision + sensor data, and turning it into an operational action plan in real time.</p>
+  <p>Predicting palm oil quality from fruit images and sensor data, then turning the results into a practical action plan in real time.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -129,9 +129,9 @@ s1, s2, s3, s4 = st.columns(4)
 with s1:
     st.markdown(ui.metric_card("🌴", "Ripeness Input", ripeness_category.split(" (")[0], "From Module 1"), unsafe_allow_html=True)
 with s2:
-    st.markdown(ui.metric_card("🧪", "Predicted FFA", f"{predicted_ffa:.2f}%", "Live XGBoost inference"), unsafe_allow_html=True)
+    st.markdown(ui.metric_card("🧪", "Oil Freshness (FFA)", f"{predicted_ffa:.2f}%", "Lower values generally mean fresher oil"), unsafe_allow_html=True)
 with s3:
-    st.markdown(ui.metric_card(risk["icon"], "Risk Level", risk["level"], "Safe <2.5% · Warning 2.5-3.5% · Critical >3.5%"), unsafe_allow_html=True)
+    st.markdown(ui.metric_card(risk["icon"], "Quality Risk", risk["level"], "Based on the oil freshness reading"), unsafe_allow_html=True)
 with s4:
     st.markdown(ui.metric_card("💰", "Revenue Impact", f"${batch_impact['penalty_total']:,.0f}", f"per {batch_size}t batch", accent=batch_impact["risk_impact_color"]), unsafe_allow_html=True)
 
@@ -147,7 +147,7 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
     st.markdown("#### Upload a Fresh Fruit Bunch (FFB) photo")
     st.caption(
-        "MVP note: ripeness grading here is a lightweight color-informed mock, "
+        "FFB means the harvested fruit bunch. This demo estimates ripeness from the image using a lightweight color-based model, "
         "standing in for a future trained YOLO detector — swappable without "
         "touching Modules 2 or 3."
     )
@@ -210,15 +210,16 @@ with tab1:
 
 # ================================================================= TAB 2
 with tab2:
-    st.markdown("#### Real-time Quality & FFA Prediction")
+    st.markdown("#### Real-time Oil Quality Prediction")
     st.caption(f"Using ripeness input **{ripeness_category}** — adjust environmental sliders in the sidebar to see this update live.")
 
     # 1. Split the entire tab into two clean, equal horizontal halves
     col_left_panel, col_right_panel = st.columns([1.4, 1.4])
 
-    # -------------------------------------------------- LEFT PANEL: FFA & METRICS
+    # -------------------------------------------------- LEFT PANEL: OIL FRESHNESS & METRICS
     with col_left_panel:
-        st.markdown("##### 🧪 Primary Core Indicator (FFA)")
+        st.markdown("##### 🧪 Main Oil Freshness Indicator (FFA)")
+        st.caption("FFA (Free Fatty Acid) is a quality measure: higher levels usually mean the oil has degraded more.")
         
         # Pull the gauge and risk banner up top together
         g1, g2 = st.columns([1, 1.2])
@@ -233,7 +234,7 @@ with tab2:
         # FIX HERE: We use 3 clean columns out in the open panel, completely separate from the gauge container!
         m1, m2, m3 = st.columns(3)
         with m1:
-            st.markdown(ui.metric_card("🧪", "Predicted FFA", f"{predicted_ffa:.2f}%", "Live XGBoost inference"), unsafe_allow_html=True)
+            st.markdown(ui.metric_card("🧪", "Oil Freshness (FFA)", f"{predicted_ffa:.2f}%", "Predicted quality measure"), unsafe_allow_html=True)
         with m2:
             st.markdown(ui.metric_card("📏", "Model MAE", f"±{metrics['mae']:.2f}%", f"R² = {metrics['r2']:.2f}"), unsafe_allow_html=True)
         with m3:
@@ -245,8 +246,8 @@ with tab2:
 
     # -------------------------------------------------- RIGHT PANEL: SECONDARY INDICATORS
     with col_right_panel:
-        st.markdown("##### 💧 Secondary Quality Indicators")
-        st.caption("Live inference pipelines processed through multi-model XGBoost architecture.")
+        st.markdown("##### 💧 Other Quality Indicators")
+        st.caption("Additional model predictions help explain the overall condition of the oil.")
         st.write("")
 
         # Simulated pipeline outputs matching your layout parameters
@@ -256,9 +257,9 @@ with tab2:
         st.markdown(
             ui.metric_card(
                 "💧", 
-                "Predicted Moisture Content", 
+                "Predicted Water Content",
                 f"{predicted_moisture:.3f}%", 
-                "Target Industry Standard: < 0.25% to minimize hydrolysis risk"
+                "Lower than 0.25% helps reduce quality loss during storage"
             ), 
             unsafe_allow_html=True
         )
@@ -268,17 +269,17 @@ with tab2:
         st.markdown(
             ui.metric_card(
                 "✨", 
-                "Predicted Purity (DOBI Index)", 
+                "Predicted Purity Score (DOBI)",
                 f"{predicted_purity:.2f}", 
-                "Target Index Score: > 2.5 indicates premium refiner grade oil"
+                "Above 2.5 indicates better suitability for refining"
             ), 
             unsafe_allow_html=True
         )
 
     # -------------------------------------------------- FINANCIAL IMPACT ANALYSIS
     st.write("")
-    st.markdown("##### 💰 Financial Impact Analysis")
-    st.caption("Estimated revenue loss from predicted FFA degradation, tied directly to bottom-line profitability.")
+    st.markdown("##### 💰 Estimated Financial Impact")
+    st.caption("Shows how lower oil quality could affect the selling price of the batch.")
 
     fin_col1, fin_col2 = st.columns([1.2, 1.8])
     with fin_col1:
@@ -288,7 +289,7 @@ with tab2:
         with fm1:
             st.markdown(ui.metric_card("💵", "Base Revenue", f"${batch_impact['base_revenue']:,.0f}", f"{batch_size}t × ${batch_impact['cpo_price']}/t"), unsafe_allow_html=True)
         with fm2:
-            st.markdown(ui.metric_card("📉", "FFA Penalty", f"−${batch_impact['penalty_total']:,.0f}", f"${batch_impact['penalty_per_ton']:,.1f}/ton"), unsafe_allow_html=True)
+            st.markdown(ui.metric_card("📉", "Quality Price Reduction", f"−${batch_impact['penalty_total']:,.0f}", f"${batch_impact['penalty_per_ton']:,.1f}/ton"), unsafe_allow_html=True)
     with fin_col2:
         st.plotly_chart(ui.build_revenue_breakdown_chart(batch_impact), use_container_width=True, config={"displayModeBar": False})
 

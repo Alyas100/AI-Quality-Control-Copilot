@@ -69,17 +69,17 @@ def get_risk_level(ffa_percentage: float) -> dict:
     if ffa_percentage < SAFE_MAX:
         return {
             "level": "Safe", "color": "green", "icon": "✅",
-            "message": "Within safe FFA range. Standard processing schedule is fine.",
+            "message": "Oil freshness is within the safe range. Standard processing schedule is fine.",
         }
     elif ffa_percentage <= WARNING_MAX:
         return {
             "level": "Warning", "color": "amber", "icon": "⚠️",
-            "message": "Approaching the FFA threshold. Prioritize processing soon.",
+            "message": "Oil freshness is declining. Prioritize processing soon to protect quality.",
         }
     else:
         return {
             "level": "Critical", "color": "red", "icon": "🚨",
-            "message": "FFA threshold exceeded. Immediate action required.",
+            "message": "The oil quality risk is high. Immediate processing action is recommended.",
         }
 
 
