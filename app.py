@@ -70,7 +70,7 @@ for key, default in {
 
 # ============================================================== sidebar
 with st.sidebar:
-    st.markdown("### 🌴 Mill Control Panel")
+    st.markdown("###Mill Control Panel")
     st.caption("Adjust intake & storage conditions to simulate live batch scenarios.")
 
     st.markdown("**Environmental Conditions**")
@@ -79,7 +79,7 @@ with st.sidebar:
     humidity_percent = st.slider("Ambient humidity (%)", 60, 100, 75)
 
     st.markdown("---")
-    st.markdown("**💰 Financial Parameters**")
+    st.markdown("**Financial Parameters**")
     batch_size = st.slider("Batch size (tons)", 5, 50, 20, help="Tonnage per processing batch for revenue calculations.")
 
     provider = "gemini"
@@ -87,7 +87,7 @@ with st.sidebar:
     model_name = "gemini-2.5-flash"
 
     st.markdown("---")
-    st.markdown("**💵 Live Financial Impact**")
+    st.markdown("**Live Financial Impact**")
     financial_placeholder = st.sidebar.empty()
 
     
