@@ -197,9 +197,8 @@ def annual_projection_card(annual: dict) -> str:
 
 def build_ffa_gauge(predicted_ffa: float) -> go.Figure:
     fig = go.Figure(go.Indicator(
-        mode="gauge+number",
+        mode="gauge",
         value=predicted_ffa,
-        number={"suffix": "%", "font": {"size": 34, "family": "Sora, sans-serif", "color": "#0f172a"}},
         gauge={
             "axis": {"range": [0, 6], "tickwidth": 1, "tickcolor": "#94a3b8"},
             "bar": {"color": "#0f172a", "thickness": 0.28},
@@ -214,8 +213,19 @@ def build_ffa_gauge(predicted_ffa: float) -> go.Figure:
         },
     ))
     fig.update_layout(
-        height=220,
-        margin=dict(l=30, r=30, t=50, b=10),
+        height=250,
+        margin=dict(l=30, r=30, t=25, b=45),
+        annotations=[
+            {
+                "text": f"<b>{predicted_ffa:.2f}%</b>",
+                "x": 0.5,
+                "y": 0.08,
+                "xref": "paper",
+                "yref": "paper",
+                "showarrow": False,
+                "font": {"size": 28, "family": "Sora, sans-serif", "color": "#0f172a"},
+            }
+        ],
     )
     return fig
 
